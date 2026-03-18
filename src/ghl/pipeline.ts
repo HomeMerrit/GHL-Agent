@@ -33,6 +33,7 @@ export async function moveToTargetStage(contactId: string): Promise<boolean> {
     } else {
       // Create a new opportunity in the target stage
       await ghlClient.post(`/opportunities/`, {
+        pipelineId: config.ghl.pipelineId,
         pipelineStageId: config.ghl.pipelineStageId,
         locationId: config.ghl.locationId,
         contactId,

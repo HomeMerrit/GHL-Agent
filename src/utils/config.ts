@@ -16,6 +16,7 @@ export const config = {
   ghl: {
     apiKey: requireEnv("GHL_API_KEY"),
     locationId: requireEnv("GHL_LOCATION_ID"),
+    pipelineId: requireEnv("GHL_PIPELINE_ID"),
     pipelineStageId: requireEnv("GHL_PIPELINE_STAGE_ID"),
     baseUrl: "https://services.leadconnectorhq.com",
   },
