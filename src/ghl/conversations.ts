@@ -11,8 +11,12 @@ export async function fetchRecentConversations(): Promise<GHLConversation[]> {
   const conversations: GHLConversation[] = [];
   let startAfter: string | undefined;
   let page = 1;
+  let reachedCutoff = false;
 
-  logger.info("Fetching conversations from GHL...");
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 30);
+
+  logger.info(`Fetching conversations from GHL (last 30 days, since ${cutoffDate.toISOString()})...`);
 
   do {
     const params: Record<string, string | number> = {
@@ -29,14 +33,22 @@ export async function fetchRecentConversations(): Promise<GHLConversation[]> {
     }>("/conversations/search", { params });
 
     const batch = res.data.conversations ?? [];
-    conversations.push(...batch);
-    logger.info(`  Page ${page}: fetched ${batch.length} conversations (total so far: ${conversations.length})`);
 
-    startAfter = res.data.meta?.startAfter;
+    for (const conv of batch) {
+      if (conv.lastMessageDate && new Date(conv.lastMessageDate) < cutoffDate) {
+        reachedCutoff = true;
+        break;
+      }
+      conversations.push(conv);
+    }
+
+    logger.info(`  Page ${page}: fetched ${batch.length} (kept so far: ${conversations.length})`);
+
+    startAfter = reachedCutoff ? undefined : res.data.meta?.startAfter;
     page++;
-  } while (startAfter);
+  } while (startAfter && !reachedCutoff);
 
-  logger.info(`Fetched ${conversations.length} conversations total.`);
+  logger.info(`Fetched ${conversations.length} conversations within the last 30 days.`);
   return conversations;
 }
 

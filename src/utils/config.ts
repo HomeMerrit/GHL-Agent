@@ -30,5 +30,9 @@ export const config = {
       process.env.MAX_MESSAGES_PER_CONVERSATION ?? "20"
     ),
     concurrencyLimit: Number(process.env.CONCURRENCY_LIMIT ?? "5"),
+    dryRun: process.env.DRY_RUN === "true",
+    smsDripDelayMs: Number(process.env.SMS_DRIP_DELAY_MS ?? "30000"),
+    stallDaysMin: Number(process.env.STALL_DAYS_MIN ?? "3"),
+    minEngagementScore: Number(process.env.MIN_ENGAGEMENT_SCORE ?? "60"),
   },
 };

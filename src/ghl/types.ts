@@ -43,6 +43,7 @@ export interface ScoredContact {
   conversation: GHLConversationDetail;
   engagementScore: number;
   scoreRationale: string;
+  sellerFinancingImplied: boolean;
 }
 
 export interface FollowUpResult {
@@ -50,5 +51,6 @@ export interface FollowUpResult {
   message: string;
   messageSent: boolean;
   pipelineMoved: boolean;
+  noteSaved: boolean;
   errors: string[];
 }
