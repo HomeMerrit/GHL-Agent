@@ -11,8 +11,11 @@
  *  7. Generate a personalized re-engagement SMS for each
  *  8. Send SMS (drip — staggered), move pipeline, add note to record
  *     (all skipped in DRY_RUN mode)
+ *  9. Write a CSV report of all processed contacts to ./results-<timestamp>.csv
  */
 
+import * as fs from "fs";
+import * as path from "path";
 import pLimit from "p-limit";
 import { config } from "./utils/config";
 import { logger } from "./utils/logger";
@@ -45,6 +48,60 @@ function isStalled(conv: GHLConversationDetail): boolean {
 
   const stallCutoff = Date.now() - config.agent.stallDaysMin * 24 * 60 * 60 * 1000;
   return lastInboundDate < stallCutoff;
+}
+
+// ─── CSV export ───────────────────────────────────────────────────────────────
+
+function csvEscape(value: string | number | boolean | undefined | null): string {
+  const str = String(value ?? "");
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function writeResultsCsv(results: FollowUpResult[], scored: ScoredContact[]): void {
+  const scoreMap = new Map(scored.map((s) => [s.contact.id, s]));
+
+  const headers = [
+    "Name",
+    "Phone",
+    "Email",
+    "Engagement Score",
+    "SF Implied",
+    "Rationale",
+    "Generated Message",
+    "Message Sent",
+    "Pipeline Moved",
+    "Note Saved",
+    "Errors",
+  ];
+
+  const rows = results.map((r) => {
+    const s = scoreMap.get(r.contact.id);
+    const name = [r.contact.firstName, r.contact.lastName].filter(Boolean).join(" ");
+    return [
+      csvEscape(name),
+      csvEscape(r.contact.phone),
+      csvEscape(r.contact.email),
+      csvEscape(s?.engagementScore ?? ""),
+      csvEscape(s?.sellerFinancingImplied ?? ""),
+      csvEscape(s?.scoreRationale ?? ""),
+      csvEscape(r.message),
+      csvEscape(r.messageSent),
+      csvEscape(r.pipelineMoved),
+      csvEscape(r.noteSaved),
+      csvEscape(r.errors.join("; ")),
+    ].join(",");
+  });
+
+  const csv = [headers.join(","), ...rows].join("\n");
+
+  // Windows-safe timestamp (no colons)
+  const ts = new Date().toISOString().replace(/:/g, "-").replace(/\..+/, "");
+  const outPath = path.resolve(process.cwd(), `results-${ts}.csv`);
+  fs.writeFileSync(outPath, csv, "utf8");
+  logger.info(`CSV report written to: ${outPath}`);
 }
 
 // ─── Step helpers ─────────────────────────────────────────────────────────────
@@ -293,6 +350,9 @@ async function main(): Promise<void> {
       logger.warn(`  ${name} (${r.contact.id}): ${r.errors.join(", ")}`);
     });
   }
+
+  // 7. Write CSV report
+  writeResultsCsv(results, top);
 }
 
 main().catch((err) => {
